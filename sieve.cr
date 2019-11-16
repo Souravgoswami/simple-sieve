@@ -1,12 +1,13 @@
  #!/usr/bin/env crystal
+# GC.disable
 
 def sieve(max)
 	sq, executing = 1, true
+	text = "Initializing Array!"
 
 	Thread.new do
-		dot, ary, colours = ".", ["\xE2\xA0\x81", "\xE2\xA0\x88", "\xE2\xA0\xA0", "\xE2\xA0\x84"] * 4, [154, 184, 208, 203, 198, 164, 129, 92].tap { |x| x.concat(x.reverse) }
-		text = "Calculating Primes in Range #{comma(max)}"
-		ti, ts = 0, text.size - 1
+		dot, ary = '.', ["\xE2\xA0\x81", "\xE2\xA0\x88", "\xE2\xA0\xA0", "\xE2\xA0\x84"] * 4
+		colours, ti =[154, 184, 208, 203, 198, 164, 129, 92].tap { |x| x.concat(x.reverse) }, 0
 
 		print "\e[?25l"
 
@@ -20,7 +21,7 @@ def sieve(max)
 						text[ti + 1..-1]} (#{sq.*(100)./(max).to_i8.clamp(0, 99).to_s.rjust(2)}%)\e[0m\r"
 					)
 
-					ti = 0 if (ti += 1) > ts
+					ti = 0 if (ti += 1) > text.size - 1
 					sleep(0.1)
 				else
 					break
@@ -29,17 +30,35 @@ def sieve(max)
 		end
 	end
 
-	s = [nil, nil] + (2..max).to_a
-	s.each do |x|
-		next unless x
-		break if (sq = x ** 2) > max
-		(sq..max).step(x) { |y| s[y] = nil }
+	s = [] of UInt32 | Nil
+	mm = max.to_u32 + 1
+
+	index = 2u32
+
+	GC.disable
+	while index < mm
+		s.push(index)
+		index += 1
+	end
+	GC.enable
+	s.unshift(nil, nil)
+
+	ccc, m = 1, (max + 1).to_u32
+
+	text = "Calculating Primes in Range #{comma(max)}"
+
+	while (sq = (ccc += 1) ** 2) < max
+		next unless x = s[ccc]
+
+		temp = sq
+		while temp < m
+			s[temp], temp = nil, temp + x
+		end
 	end
 
 	executing = false
-	sleep 0.01
 	print "\e[2K\r\e[?25h\e[0m"
-	s.tap { |x| x.compact! }
+	s.compact!
 end
 
 def swapcase(text)
@@ -81,8 +100,7 @@ end
 if ARGV.find { |x| x =~ /help$/i }
 	puts(help)
 	exit
-
-elsif ARGV.find { |x| x.split(/[^\d]/).join.to_i { 0 }.to_s != x.split(/[^\d]/).join } || ARGV.empty?
+elsif ARGV.empty? || !ARGV.find { |x| x.split(/[^\d]/).join.to_i { 0 }.to_s == x.split(/[^\d]/).join }
 	abort (<<-EOF)
 	\e[31;1m"Bad usage." - #{File.basename(__FILE__)}
 
@@ -90,19 +108,18 @@ elsif ARGV.find { |x| x.split(/[^\d]/).join.to_i { 0 }.to_s != x.split(/[^\d]/).
 	EOF
 end
 
-
-n = ARGV.find { |x| x.split(/[^\d]/).join.to_i { 0 }.to_s == x.split(/[^\d]/).join }
-	.to_s.split(/[^\d]/).join.to_i { 0 }
-
+n = ARGV.find { |x| x.split(/[^\d]/).join.to_i { 1 }.to_s == x.split(/[^\d]/).join }
+	.to_s.split(/[^\d]/).join.to_i { 1 }
 sieves = sieve(n)
 
 if ARGV.find { |x| x =~ /^listOnly$/i }
 	puts sieves.join("\n")
+
 else
 	sz = comma(sieves.size)
 	m = "Total #{sz} Prime Number#{sz == 1 ? "" : "s" } were Found in Range #{comma(n)}"
 
-	puts "List of Primes in Range#{n}:\n#{sieves.join(", ")}\n\e[4m#{" " * m.size}\e[0m" if ARGV.find { |x| x =~ /^list$/i }
+	puts "List of Primes in Range #{n}:\n#{sieves.join(", ")}\n\e[4m#{" " * m.size}\e[0m" if ARGV.find { |x| x =~ /^list$/i }
 	puts "Total #{sz} Prime Number#{sz == 1 ? "" : "s" } #{sz == 1 ? "is" : "were"} Found in Range #{comma(n)}"
 end
 
