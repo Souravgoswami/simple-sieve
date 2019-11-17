@@ -1,12 +1,11 @@
  #!/usr/bin/env crystal
-# GC.disable
 
 def sieve(max)
 	sq, executing = 1, true
 	text = "Initializing Array!"
 
 	Thread.new do
-		dot, ary = '.', ["\xE2\xA0\x81", "\xE2\xA0\x88", "\xE2\xA0\xA0", "\xE2\xA0\x84"] * 4
+		dot, ary = ".", ["\xE2\xA0\x81", "\xE2\xA0\x88", "\xE2\xA0\xA0", "\xE2\xA0\x84"] * 4
 		colours, ti =[154, 184, 208, 203, 198, 164, 129, 92].tap { |x| x.concat(x.reverse) }, 0
 
 		print "\e[?25l"
@@ -18,7 +17,7 @@ def sieve(max)
 						" \e[2K#{ary[x]}\e[38;5;#{colours[x]}m \
 						#{text[0...ti] + (text[ti].to_s =~ /\d/ ? "\e[4m" : "" )\
 						+ swapcase(text[ti]) + "\e[0m\e[38;5;#{colours[x]}m" +\
-						text[ti + 1..-1]} (#{sq.*(100)./(max).to_i8.clamp(0, 99).to_s.rjust(2)}%)\e[0m\r"
+						text[ti + 1..-1]}#{(dot * (x // 2)).ljust(8)} (#{sq.*(100).//(max).clamp(0, 99).to_s.rjust(2)}%)\e[0m\r"
 					)
 
 					ti = 0 if (ti += 1) > text.size - 1
@@ -30,27 +29,25 @@ def sieve(max)
 		end
 	end
 
-	s = [] of UInt32 | Nil
-	mm = max.to_u32 + 1
-
-	index = 2u32
+	mm, s, index = max.to_u32 + 1, [nil, nil, 2u32], 3u32
 
 	GC.disable
 	while index < mm
-		s.push(index)
+		s.push index
 		index += 1
 	end
 	GC.enable
-	s.unshift(nil, nil)
 
-	ccc, m = 1, (max + 1).to_u32
-
+	ccc, m = 2, (max + 1).to_u32
 	text = "Calculating Primes in Range #{comma(max)}"
 
-	while (sq = (ccc += 1) ** 2) < max
-		next unless x = s[ccc]
+	while (sq = ccc ** 2) < max
+		unless x = s[ccc]
+			ccc += 1
+			next
+		end
 
-		temp = sq
+		temp, ccc = sq, ccc + 1
 		while temp < m
 			s[temp], temp = nil, temp + x
 		end
@@ -114,7 +111,6 @@ sieves = sieve(n)
 
 if ARGV.find { |x| x =~ /^listOnly$/i }
 	puts sieves.join("\n")
-
 else
 	sz = comma(sieves.size)
 	m = "Total #{sz} Prime Number#{sz == 1 ? "" : "s" } were Found in Range #{comma(n)}"
